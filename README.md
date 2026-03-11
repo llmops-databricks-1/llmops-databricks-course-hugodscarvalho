@@ -24,5 +24,6 @@ To create a new environment and create a lockfile, run:
 uv sync --extra dev
 ```
 
+Author: Hugo Carvalho
 
 
