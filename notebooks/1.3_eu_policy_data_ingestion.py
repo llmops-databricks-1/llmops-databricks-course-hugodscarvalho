@@ -1,12 +1,12 @@
 # Databricks notebook source
-
+import io
 import os
 from datetime import datetime
 
 import pypdf
 from loguru import logger
 from pyspark.sql import SparkSession
-from pyspark.sql.types import ArrayType, IntegerType, StringType, StructField, StructType
+from pyspark.sql.types import ArrayType, BooleanType, IntegerType, StringType, StructField, StructType, TimestampType
 
 from eu_policy_agent.config import get_env, load_config
 
@@ -20,7 +20,6 @@ cfg = load_config("../project_config.yml", env)
 
 CATALOG = cfg.catalog
 SCHEMA = cfg.schema
-VOLUME = cfg.volume
 TABLE_NAME = "raw_documents"
 
 VOLUME_PATH = cfg.full_volume_path  # /Volumes/dev/eu_policy/legislation
@@ -129,8 +128,8 @@ DOCUMENT_METADATA: dict[str, dict] = {
 def list_pdf_files(volume_path: str) -> list[str]:
     """List all PDF files in a Unity Catalog Volume path.
 
-    Tries dbutils.fs.ls first (Databricks runtime), falls back to
-    os.listdir for local development with databricks-connect.
+    Tries dbutils.fs.ls first (native Databricks runtime), then falls back to
+    the Databricks SDK Files API for local development with databricks-connect.
 
     Args:
         volume_path: Absolute volume path, e.g. /Volumes/dev/eu_policy/legislation
@@ -139,19 +138,25 @@ def list_pdf_files(volume_path: str) -> list[str]:
         Sorted list of absolute file paths ending in .pdf
     """
     try:
-        from pyspark.dbutils import DBUtils
-
-        dbutils = DBUtils(spark)
-        items = dbutils.fs.ls(volume_path)
+        # Native Databricks runtime — dbutils is injected into the notebook global scope
+        items = dbutils.fs.ls(volume_path)  # noqa: F821
         return sorted([item.path for item in items if item.name.endswith(".pdf")])
-    except Exception:
-        return sorted(
-            [
-                os.path.join(volume_path, f)
-                for f in os.listdir(volume_path)
-                if f.endswith(".pdf")
-            ]
-        )
+    except NameError:
+        pass
+
+    # Local dev with databricks-connect: use the SDK Files REST API
+    # (no cluster needed — works directly against Unity Catalog Volumes)
+    from databricks.sdk import WorkspaceClient
+
+    w = WorkspaceClient()
+    items = w.files.list_directory_contents(volume_path)
+    return sorted(
+        [
+            f"{volume_path}/{item.name}"
+            for item in items
+            if item.name and item.name.endswith(".pdf")
+        ]
+    )
 
 
 pdf_files = list_pdf_files(VOLUME_PATH)
@@ -163,38 +168,45 @@ for path in pdf_files:
 # Extract text from each PDF
 
 
-def extract_text_from_pdf(file_path: str) -> tuple[str, int]:
-    """Extract full text content and page count from a PDF file.
+def _open_pdf_stream(file_path: str):
+    """Return a binary stream for a PDF, regardless of where it lives.
 
-    Uses pypdf to parse each page sequentially. Pages with no extractable
-    text (e.g. scanned images) are silently skipped.
+    On native Databricks the volume is FUSE-mounted, so plain open() works.
+    Locally with databricks-connect the path doesn't exist on disk, so we
+    download it via the SDK Files REST API instead.
+    """
+    try:
+        return open(file_path, "rb")
+    except FileNotFoundError:
+        from databricks.sdk import WorkspaceClient
+        response = WorkspaceClient().files.download(file_path)
+        return io.BytesIO(response.contents.read())
+
+
+def get_pdf_page_count(file_path: str) -> int:
+    """Return the number of pages in a PDF file.
+
+    Full text extraction is deferred to the chunking notebook.
 
     Args:
         file_path: Absolute path to the PDF (e.g. /Volumes/...)
 
     Returns:
-        Tuple of (extracted_text, num_pages)
+        Number of pages, or 0 if the file cannot be read.
     """
-    text_parts = []
-    num_pages = 0
     try:
-        with open(file_path, "rb") as f:
-            reader = pypdf.PdfReader(f)
-            num_pages = len(reader.pages)
-            for page in reader.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text_parts.append(page_text.strip())
+        with _open_pdf_stream(file_path) as f:
+            return len(pypdf.PdfReader(f).pages)
     except Exception as e:
-        logger.warning(f"Failed to extract text from {file_path}: {e}")
-    return "\n\n".join(text_parts), num_pages
+        logger.warning(f"Failed to read page count from {file_path}: {e}")
+        return 0
 
 
 def ingest_pdf_documents(pdf_file_paths: list[str]) -> list[dict]:
     """Ingest a list of PDF files from a volume and return document records.
 
-    Each record contains extracted text plus static and computed metadata
-    aligned with the course's raw-ingestion table pattern.
+    Each record contains page count plus static metadata. Full text extraction
+    is deferred to the chunking notebook.
 
     Args:
         pdf_file_paths: List of absolute paths to PDF files
@@ -215,8 +227,8 @@ def ingest_pdf_documents(pdf_file_paths: list[str]) -> list[dict]:
         )
         title = official_title.split(" of the European Parliament")[0].strip()
 
-        logger.info(f"Extracting text from {filename}...")
-        content, num_pages = extract_text_from_pdf(file_path)
+        logger.info(f"Reading page count from {filename}...")
+        num_pages = get_pdf_page_count(file_path)
 
         documents.append(
             {
@@ -230,14 +242,12 @@ def ingest_pdf_documents(pdf_file_paths: list[str]) -> list[dict]:
                 "topics": meta.get("topics"),
                 "official_url": meta.get("official_url"),
                 "volume_path": file_path,
-                "content": content,
                 "num_pages": num_pages,
-                "char_count": len(content),
-                "ingestion_timestamp": datetime.now().isoformat(),
-                "processed": None,  # Will be set in later notebooks (e.g. chunking/embedding)
+                "ingestion_timestamp": datetime.now(),
+                "processed": None,  # Will be set to True in later notebooks (e.g. chunking/embedding)
             }
         )
-        logger.info(f"  -> {num_pages} pages, {len(content):,} chars | {meta.get('regulation_number', 'unknown')}")
+        logger.info(f"  -> {num_pages} pages | {meta.get('regulation_number', 'unknown')}")
 
     return documents
 
@@ -248,7 +258,7 @@ logger.info(f"Completed ingestion of {len(documents)} documents")
 
 # COMMAND ----------
 # Create Delta Table in Unity Catalog
-# Store raw extracted text in a Delta table for downstream processing.
+# Store document metadata for downstream processing (chunking, embedding, evaluation).
 
 schema = StructType(
     [
@@ -262,11 +272,9 @@ schema = StructType(
         StructField("topics", ArrayType(StringType()), True),   # Key topic tags
         StructField("official_url", StringType(), True),        # EUR-Lex URL
         StructField("volume_path", StringType(), True),         # /Volumes/.../ai_act.pdf
-        StructField("content", StringType(), True),             # Full extracted text
         StructField("num_pages", IntegerType(), True),          # PDF page count
-        StructField("char_count", IntegerType(), True),         # Character count of extracted text
-        StructField("ingestion_timestamp", StringType(), True),
-        StructField("processed", StringType(), True),           # Will be set in later notebooks
+        StructField("ingestion_timestamp", TimestampType(), True),
+        StructField("processed", BooleanType(), True),          # Set to True once document is chunked/embedded
     ]
 )
 
@@ -277,7 +285,7 @@ table_path = f"{CATALOG}.{SCHEMA}.{TABLE_NAME}"
 df.write \
     .format("delta") \
     .mode("overwrite") \
-    .option("mergeSchema", "true") \
+    .option("overwriteSchema", "true") \
     .saveAsTable(table_path)
 
 logger.info(f"Created Delta table: {table_path}")
@@ -294,15 +302,15 @@ logger.info("Schema:")
 docs_df.printSchema()
 
 logger.info("Document overview:")
-docs_df.select("document_id", "document_type", "regulation_number", "year", "num_pages", "char_count") \
+docs_df.select("document_id", "document_type", "regulation_number", "year", "num_pages") \
     .show(20, truncate=60)
 
 # COMMAND ----------
 # Data Statistics
 
-logger.info("Content size by document (largest first):")
-docs_df.select("document_id", "regulation_number", "document_type", "num_pages", "char_count") \
-    .orderBy("char_count", ascending=False) \
+logger.info("Page count by document (largest first):")
+docs_df.select("document_id", "regulation_number", "document_type", "num_pages") \
+    .orderBy("num_pages", ascending=False) \
     .show(truncate=50)
 
 logger.info("Documents by type:")
@@ -315,6 +323,7 @@ logger.info("Total corpus statistics:")
 docs_df.selectExpr(
     "count(*) as num_documents",
     "sum(num_pages) as total_pages",
-    "sum(char_count) as total_chars",
-    "avg(char_count) as avg_chars_per_doc",
+    "avg(num_pages) as avg_pages_per_doc",
 ).show()
+
+# COMMAND ----------
