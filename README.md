@@ -181,6 +181,54 @@ The run output and logs stream directly to your terminal. You can also monitor t
 
 ---
 
+## Development
+
+### Linting and formatting
+
+[Ruff](https://github.com/astral-sh/ruff) handles both linting and formatting (replaces `flake8` + `black`). It is included in the `dev` dependencies.
+
+```bash
+# Install dev dependencies (includes ruff)
+uv sync --extra dev
+
+# Lint and auto-fix
+uv run ruff check . --fix
+
+# Format
+uv run ruff format .
+
+# Both in one go
+uv run ruff check . --fix && uv run ruff format .
+```
+
+Alternatively, run without installing via `uvx`:
+
+```bash
+uvx ruff check . --fix && uvx ruff format .
+```
+
+### Pre-commit hooks
+
+Pre-commit runs `ruff` (lint + format) and a set of standard checks (trailing whitespace, merge conflicts, private key detection, etc.) automatically on every `git commit`.
+
+```bash
+# One-time setup — installs the git hooks
+uv run pre-commit install
+
+# Run manually against all files
+uv run pre-commit run --all-files
+
+# Run against staged files only (same as on git commit)
+uv run pre-commit run
+
+# Run a specific hook
+uv run pre-commit run ruff --all-files
+```
+
+Once installed, hooks run automatically. If a hook fails or auto-fixes a file, the commit is blocked — `git add` the fixed files and retry.
+
+---
+
 ## Git conventions
 
 | Convention | Format |
@@ -220,5 +268,3 @@ prd:
 ## Author
 
 **Hugo Carvalho** · [github.com/hugodscarvalho](https://github.com/hugodscarvalho)
-
-

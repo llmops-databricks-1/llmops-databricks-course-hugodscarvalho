@@ -32,6 +32,7 @@ dev = ["databricks-connect>=17.0, <18",
        "ipykernel>=6.29.5, <7",
        "pip>=25.0.1, <26",
        "pre-commit>=4.1.0, <5",
+       "ruff>=0.15.1, <1",
        "claudetracing>=0.2.0, <1",]
 
 ci = ["pre-commit>=4.1.0, <5",
@@ -62,6 +63,7 @@ pythonpath = ["."]
 [tool.ruff]
 line-length = 90
 
+[tool.ruff.lint]
 select = [
     "F",    # pyflakes rules
     "E",    # pycodestyle error rules
@@ -82,9 +84,10 @@ ignore = [
     "C901",   # too complex
     "ERA001", # commented out code
     "ANN204",
-    "ANN102",
-    "ANN101"
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"notebooks/*.py" = ["E501", "E402"]
 
 [tool.ruff.format]
 indent-style = "space"

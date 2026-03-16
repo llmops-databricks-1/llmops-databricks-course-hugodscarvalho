@@ -17,7 +17,9 @@ class ProjectConfig(BaseModel):
     llm_endpoint: str = Field(default="", description="LLM endpoint name")
     embedding_endpoint: str = Field(default="", description="Embedding endpoint name")
     warehouse_id: str = Field(default="", description="Warehouse ID")
-    vector_search_endpoint: str = Field(default="", description="Vector search endpoint name")
+    vector_search_endpoint: str = Field(
+        default="", description="Vector search endpoint name"
+    )
 
     model_config = {"populate_by_name": True}
 
@@ -33,7 +35,9 @@ class ProjectConfig(BaseModel):
             ProjectConfig instance
         """
         if env not in ["prd", "acc", "dev"]:
-            raise ValueError(f"Invalid environment: {env}. Expected 'prd', 'acc', or 'dev'")
+            raise ValueError(
+                f"Invalid environment: {env}. Expected 'prd', 'acc', or 'dev'"
+            )
 
         with open(config_path) as f:
             config_data = yaml.safe_load(f)
@@ -59,7 +63,9 @@ class ProjectConfig(BaseModel):
         return f"/Volumes/{self.catalog}/{self.db_schema}/{self.volume}"
 
 
-def load_config(config_path: str = "project_config.yml", env: str = "dev") -> ProjectConfig:
+def load_config(
+    config_path: str = "project_config.yml", env: str = "dev"
+) -> ProjectConfig:
     """Load project configuration.
 
     Args:

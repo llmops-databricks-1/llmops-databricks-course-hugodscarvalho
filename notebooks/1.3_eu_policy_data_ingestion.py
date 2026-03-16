@@ -6,7 +6,15 @@ from datetime import datetime
 import pypdf
 from loguru import logger
 from pyspark.sql import SparkSession
-from pyspark.sql.types import ArrayType, BooleanType, IntegerType, StringType, StructField, StructType, TimestampType
+from pyspark.sql.types import (
+    ArrayType,
+    BooleanType,
+    IntegerType,
+    StringType,
+    StructField,
+    StructType,
+    TimestampType,
+)
 
 from eu_policy_agent.config import get_env, load_config
 
@@ -41,8 +49,15 @@ DOCUMENT_METADATA: dict[str, dict] = {
         "document_type": "Regulation",
         "regulation_number": "2024/1689",
         "year": 2024,
-        "topics": ["AI", "risk management", "transparency", "prohibited AI practices",
-                   "high-risk AI systems", "conformity assessment", "general-purpose AI"],
+        "topics": [
+            "AI",
+            "risk management",
+            "transparency",
+            "prohibited AI practices",
+            "high-risk AI systems",
+            "conformity assessment",
+            "general-purpose AI",
+        ],
         "official_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689",
     },
     "gdpr": {
@@ -54,8 +69,15 @@ DOCUMENT_METADATA: dict[str, dict] = {
         "document_type": "Regulation",
         "regulation_number": "2016/679",
         "year": 2016,
-        "topics": ["data protection", "privacy", "personal data", "consent",
-                   "data subject rights", "data controller", "data processor"],
+        "topics": [
+            "data protection",
+            "privacy",
+            "personal data",
+            "consent",
+            "data subject rights",
+            "data controller",
+            "data processor",
+        ],
         "official_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679",
     },
     "digital_markets_act": {
@@ -66,8 +88,14 @@ DOCUMENT_METADATA: dict[str, dict] = {
         "document_type": "Regulation",
         "regulation_number": "2022/1925",
         "year": 2022,
-        "topics": ["digital markets", "gatekeepers", "fair competition",
-                   "platform regulation", "interoperability", "self-preferencing"],
+        "topics": [
+            "digital markets",
+            "gatekeepers",
+            "fair competition",
+            "platform regulation",
+            "interoperability",
+            "self-preferencing",
+        ],
         "official_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32022R1925",
     },
     "digital_services_act": {
@@ -78,8 +106,14 @@ DOCUMENT_METADATA: dict[str, dict] = {
         "document_type": "Regulation",
         "regulation_number": "2022/2065",
         "year": 2022,
-        "topics": ["digital services", "online platforms", "content moderation",
-                   "illegal content", "transparency", "very large online platforms"],
+        "topics": [
+            "digital services",
+            "online platforms",
+            "content moderation",
+            "illegal content",
+            "transparency",
+            "very large online platforms",
+        ],
         "official_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32022R2065",
     },
     "nis2_directive": {
@@ -91,8 +125,14 @@ DOCUMENT_METADATA: dict[str, dict] = {
         "document_type": "Directive",
         "regulation_number": "2022/2555",
         "year": 2022,
-        "topics": ["cybersecurity", "network security", "incident reporting",
-                   "critical infrastructure", "essential entities", "supply chain security"],
+        "topics": [
+            "cybersecurity",
+            "network security",
+            "incident reporting",
+            "critical infrastructure",
+            "essential entities",
+            "supply chain security",
+        ],
         "official_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32022L2555",
     },
     "data_act": {
@@ -103,8 +143,14 @@ DOCUMENT_METADATA: dict[str, dict] = {
         "document_type": "Regulation",
         "regulation_number": "2023/2854",
         "year": 2023,
-        "topics": ["data access", "data sharing", "IoT", "cloud switching",
-                   "data portability", "connected products"],
+        "topics": [
+            "data access",
+            "data sharing",
+            "IoT",
+            "cloud switching",
+            "data portability",
+            "connected products",
+        ],
         "official_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32023R2854",
     },
     "data_governance_act": {
@@ -115,8 +161,14 @@ DOCUMENT_METADATA: dict[str, dict] = {
         "document_type": "Regulation",
         "regulation_number": "2022/868",
         "year": 2022,
-        "topics": ["data governance", "data intermediaries", "data altruism",
-                   "public sector data", "data spaces", "re-use of protected data"],
+        "topics": [
+            "data governance",
+            "data intermediaries",
+            "data altruism",
+            "public sector data",
+            "data spaces",
+            "re-use of protected data",
+        ],
         "official_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32022R0868",
     },
 }
@@ -168,7 +220,7 @@ for path in pdf_files:
 # Extract text from each PDF
 
 
-def _open_pdf_stream(file_path: str):
+def _open_pdf_stream(file_path: str) -> object:
     """Return a binary stream for a PDF, regardless of where it lives.
 
     On native Databricks the volume is FUSE-mounted, so plain open() works.
@@ -179,6 +231,7 @@ def _open_pdf_stream(file_path: str):
         return open(file_path, "rb")
     except FileNotFoundError:
         from databricks.sdk import WorkspaceClient
+
         response = WorkspaceClient().files.download(file_path)
         return io.BytesIO(response.contents.read())
 
@@ -247,7 +300,9 @@ def ingest_pdf_documents(pdf_file_paths: list[str]) -> list[dict]:
                 "processed": None,  # Will be set to True in later notebooks (e.g. chunking/embedding)
             }
         )
-        logger.info(f"  -> {num_pages} pages | {meta.get('regulation_number', 'unknown')}")
+        logger.info(
+            f"  -> {num_pages} pages | {meta.get('regulation_number', 'unknown')}"
+        )
 
     return documents
 
@@ -262,19 +317,23 @@ logger.info(f"Completed ingestion of {len(documents)} documents")
 
 schema = StructType(
     [
-        StructField("document_id", StringType(), False),        # e.g. "ai_act"
-        StructField("filename", StringType(), False),           # e.g. "ai_act.pdf"
-        StructField("title", StringType(), True),               # Short title (before "of the European Parliament")
-        StructField("official_title", StringType(), True),      # Full legal title
-        StructField("document_type", StringType(), True),       # "Regulation" or "Directive"
-        StructField("regulation_number", StringType(), True),   # e.g. "2024/1689"
-        StructField("year", IntegerType(), True),               # Publication year
-        StructField("topics", ArrayType(StringType()), True),   # Key topic tags
-        StructField("official_url", StringType(), True),        # EUR-Lex URL
-        StructField("volume_path", StringType(), True),         # /Volumes/.../ai_act.pdf
-        StructField("num_pages", IntegerType(), True),          # PDF page count
+        StructField("document_id", StringType(), False),  # e.g. "ai_act"
+        StructField("filename", StringType(), False),  # e.g. "ai_act.pdf"
+        StructField(
+            "title", StringType(), True
+        ),  # Short title (before "of the European Parliament")
+        StructField("official_title", StringType(), True),  # Full legal title
+        StructField("document_type", StringType(), True),  # "Regulation" or "Directive"
+        StructField("regulation_number", StringType(), True),  # e.g. "2024/1689"
+        StructField("year", IntegerType(), True),  # Publication year
+        StructField("topics", ArrayType(StringType()), True),  # Key topic tags
+        StructField("official_url", StringType(), True),  # EUR-Lex URL
+        StructField("volume_path", StringType(), True),  # /Volumes/.../ai_act.pdf
+        StructField("num_pages", IntegerType(), True),  # PDF page count
         StructField("ingestion_timestamp", TimestampType(), True),
-        StructField("processed", BooleanType(), True),          # Set to True once document is chunked/embedded
+        StructField(
+            "processed", BooleanType(), True
+        ),  # Set to True once document is chunked/embedded
     ]
 )
 
@@ -282,11 +341,9 @@ df = spark.createDataFrame(documents, schema=schema)
 
 table_path = f"{CATALOG}.{SCHEMA}.{TABLE_NAME}"
 
-df.write \
-    .format("delta") \
-    .mode("overwrite") \
-    .option("overwriteSchema", "true") \
-    .saveAsTable(table_path)
+df.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable(
+    table_path
+)
 
 logger.info(f"Created Delta table: {table_path}")
 logger.info(f"Records written: {df.count()}")
@@ -302,16 +359,17 @@ logger.info("Schema:")
 docs_df.printSchema()
 
 logger.info("Document overview:")
-docs_df.select("document_id", "document_type", "regulation_number", "year", "num_pages") \
-    .show(20, truncate=60)
+docs_df.select(
+    "document_id", "document_type", "regulation_number", "year", "num_pages"
+).show(20, truncate=60)
 
 # COMMAND ----------
 # Data Statistics
 
 logger.info("Page count by document (largest first):")
-docs_df.select("document_id", "regulation_number", "document_type", "num_pages") \
-    .orderBy("num_pages", ascending=False) \
-    .show(truncate=50)
+docs_df.select("document_id", "regulation_number", "document_type", "num_pages").orderBy(
+    "num_pages", ascending=False
+).show(truncate=50)
 
 logger.info("Documents by type:")
 docs_df.groupBy("document_type").count().orderBy("count", ascending=False).show()

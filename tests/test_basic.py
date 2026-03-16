@@ -5,7 +5,7 @@ import importlib
 from loguru import logger
 
 
-def test_package_import():
+def test_package_import() -> None:
     """Test that the package can be imported."""
     package_name = "eu_policy_agent"
     logger.info(f"Attempting to import package: {package_name}")
@@ -14,7 +14,7 @@ def test_package_import():
     logger.info(f"Package '{package_name}' imported successfully: {module}")
 
 
-def test_version_exists():
+def test_version_exists() -> None:
     """Test that the package has a version attribute."""
     package_name = "eu_policy_agent"
     logger.info(f"Checking __version__ attribute on package: {package_name}")
