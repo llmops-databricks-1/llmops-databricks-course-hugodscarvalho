@@ -2,12 +2,15 @@ bundle:
   name: llmops-databricks-course-hugodscarvalho
 
 include:
-  - resources/*.yml
+- resources/*.yml
 
 variables:
   git_sha:
     description: "Git SHA of the deployed commit"
     default: "local"
+  schedule_pause_status:
+    description: "Schedule pause status"
+    default: PAUSED
 
 artifacts:
   default:
@@ -20,5 +23,19 @@ targets:
     mode: development
     default: true
     workspace:
-      host: https://<your-databricks-workspace>
+      host: https://dbc-cf5d4dc9-f30c.cloud.databricks.com
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+
+  acc:
+    workspace:
+      host: https://dbc-cf5d4dc9-f30c.cloud.databricks.com # Replace with your acc workspace host
+      root_path: /Shared/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      schedule_pause_status: PAUSED
+
+  prd:
+    workspace:
+      host: https://dbc-cf5d4dc9-f30c.cloud.databricks.com # Replace with your prd workspace host
+      root_path: /Shared/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      schedule_pause_status: UNPAUSED
