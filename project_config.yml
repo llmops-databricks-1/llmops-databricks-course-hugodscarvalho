@@ -7,7 +7,7 @@ dev:
   volume: legislation
   llm_endpoint: databricks-llama-4-maverick
   embedding_endpoint: databricks-gte-large-en
-  warehouse_id: "" # Fill in your warehouse ID
+  warehouse_id: "520a7ce3b05d3359"
   vector_search_endpoint: "" # Fill in your VS endpoint
 
 # Acceptance/Staging environment
@@ -17,7 +17,7 @@ acc:
   volume: legislation
   llm_endpoint: databricks-llama-4-maverick
   embedding_endpoint: databricks-gte-large-en
-  warehouse_id: "" # Fill in your acc warehouse ID
+  warehouse_id: "520a7ce3b05d3359"
   vector_search_endpoint: "" # Fill in your acc VS endpoint
 
 # Production environment
@@ -27,7 +27,7 @@ prd:
   volume: legislation
   llm_endpoint: databricks-llama-4-maverick
   embedding_endpoint: databricks-gte-large-en
-  warehouse_id: "" # Fill in your prd warehouse ID
+  warehouse_id: "520a7ce3b05d3359"
   vector_search_endpoint: "" # Fill in your prd VS endpoint
 
 # Model configuration

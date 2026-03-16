@@ -20,13 +20,13 @@ uv run pytest
 ## Project Structure
 
 ```
-llmops-databricks-course-hugodscarvalho/
+eu-policy-agent/
 ├── .claude/
 │   └── commands/           # Claude Code slash commands (fix-deps, run-notebook, ship)
 ├── .github/
 │   └── workflows/ci.yml
 ├── notebooks/              # Databricks-format notebooks
-│   └── hello_world.py
+│   └── 1.3_eu_policy_data_ingestion.py
 ├── resources/              # Databricks Asset Bundle job definitions (*.yml)
 ├── tests/
 ├── databricks.yml          # Databricks Asset Bundle configuration
@@ -81,11 +81,11 @@ Custom slash commands are defined in `.claude/commands/`. Use them to automate c
 Deploys the project wheel and runs a notebook as a Databricks job.
 
 ```bash
-/run-notebook notebooks/hello_world.py
+/run-notebook notebooks/1.3_eu_policy_data_ingestion.py
 ```
 
 What it does:
-1. Derives a job resource key from the notebook filename (e.g. `hello_world_job`)
+1. Derives a job resource key from the notebook filename (e.g. `eu_policy_ingestion_job`)
 2. Ensures `resources/` exists and is included in `databricks.yml`
 3. Creates `resources/<key>.yml` if it doesn't exist, with `env`, `git_sha`, and `run_id` base parameters
 4. Runs `databricks bundle deploy` then `databricks bundle run <key>`

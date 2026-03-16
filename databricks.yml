@@ -1,5 +1,5 @@
 bundle:
-  name: llmops-databricks-course-hugodscarvalho
+  name: eu-policy-agent
 
 include:
 - resources/*.yml

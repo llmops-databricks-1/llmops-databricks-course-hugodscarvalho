@@ -71,7 +71,7 @@ dev  ──►  acc  ──►  prd
 ## Project structure
 
 ```
-llmops-databricks-course-hugodscarvalho/
+eu-policy-agent/
 ├── notebooks/                  # Databricks notebooks (one per deliverable)
 ├── src/
 │   └── eu_policy_agent/        # Python package
@@ -111,8 +111,8 @@ llmops-databricks-course-hugodscarvalho/
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/hugodscarvalho/llmops-databricks-course-hugodscarvalho.git
-cd llmops-databricks-course-hugodscarvalho
+git clone https://github.com/hugodscarvalho/eu-policy-agent.git
+cd eu-policy-agent
 
 uv sync --extra dev
 ```
@@ -127,20 +127,33 @@ Or use the VS Code Databricks extension to sign in - it will configure `databric
 
 ### 3. Configure local environment
 
-Fill in the blank fields in `project_config.yml` (warehouse ID, VS endpoint) and verify `databricks.yml` points to your workspace hosts for `acc` and `prd`.
+Fill in the blank VS endpoint fields in `project_config.yml` and verify `databricks.yml` points to your workspace hosts for `acc` and `prd`.
 
 ### 4. Create Unity Catalog objects
 
-Run the following once per environment before executing any notebooks:
+Run the following to create the Unity Catalog objects across all three environments:
 
 ```sql
--- Repeat for acc and prd catalogs as needed
+-- Dev
 CREATE CATALOG IF NOT EXISTS dev;
 CREATE SCHEMA IF NOT EXISTS dev.eu_policy;
 CREATE VOLUME IF NOT EXISTS dev.eu_policy.legislation;
+
+-- Acc
+CREATE CATALOG IF NOT EXISTS acc;
+CREATE SCHEMA IF NOT EXISTS acc.eu_policy;
+CREATE VOLUME IF NOT EXISTS acc.eu_policy.legislation;
+
+-- Prd
+CREATE CATALOG IF NOT EXISTS prd;
+CREATE SCHEMA IF NOT EXISTS prd.eu_policy;
+CREATE VOLUME IF NOT EXISTS prd.eu_policy.legislation;
 ```
 
-Then upload the 7 PDF files to `/Volumes/dev/eu_policy/legislation/`.
+Then upload the 7 PDF files to each of the three volumes:
+- `/Volumes/dev/eu_policy/legislation/`
+- `/Volumes/acc/eu_policy/legislation/`
+- `/Volumes/prd/eu_policy/legislation/`
 
 ### 5. Deploy the bundle
 
@@ -151,6 +164,20 @@ databricks bundle deploy
 # Deploy to a specific target
 databricks bundle deploy --target acc
 ```
+
+### 6. Run a job
+
+After deploying, trigger a job run directly from the CLI:
+
+```bash
+# Run the ingestion job on dev (default)
+databricks bundle run eu_policy_ingestion_job
+
+# Run on a specific target
+databricks bundle run eu_policy_ingestion_job --target acc
+```
+
+The run output and logs stream directly to your terminal. You can also monitor the run in the Databricks Jobs UI.
 
 ---
 

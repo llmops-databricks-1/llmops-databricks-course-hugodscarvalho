@@ -1,7 +1,7 @@
 [project]
-name = "llmops-databricks-course-hugodscarvalho"
+name = "eu-policy-agent"
 dynamic = ["version"]
-description = "llmops-databricks-course-hugodscarvalho - LLMOps Course on Databricks"
+description = "eu-policy-agent - EU Policy Agent for LLMOps Course on Databricks"
 requires-python = ">=3.12, <3.13"
 dependencies = [
     "cffi==1.17.1",
