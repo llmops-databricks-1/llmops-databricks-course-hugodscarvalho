@@ -90,7 +90,7 @@ eu-policy-agent/
 
 | Week | Deliverable | Status |
 |---|---|---|
-| 1 | Environment setup · PDF ingestion into Delta tables (`raw_documents`) | 🔄 In progress |
+| 1 | Environment setup · PDF ingestion into Delta tables (`raw_documents`) | ✅ Done |
 | 2 | Chunking · Embeddings · Vector Search index · Genie Space | ⬜ Planned |
 | 3 | Agent definition · Tool calling · Memory with Lakebase | ⬜ Planned |
 | 4 | MLflow tracing · Evaluation · Prompt optimisation | ⬜ Planned |
