@@ -6,7 +6,7 @@ Pipeline flow:
     ai_parsed_docs table (JSON from ai_parse_document)
         ↓  (process_chunks)
     eu_policy_chunks table (clean text + metadata)
-        ↓  (VectorSearchManager — separate module)
+        ↓  (VectorSearchManager - separate module)
     Vector Search Index (embeddings)
 """
 
@@ -59,9 +59,7 @@ class DataProcessor:
         self.catalog = config.catalog
         self.schema = config.schema
 
-    # ------------------------------------------------------------------
     # Fully-qualified table helpers
-    # ------------------------------------------------------------------
 
     @property
     def raw_documents_fqn(self) -> str:
@@ -78,9 +76,7 @@ class DataProcessor:
         """Fully-qualified name of the chunks table."""
         return f"{self.catalog}.{self.schema}.{self.CHUNKS_TABLE}"
 
-    # ------------------------------------------------------------------
-    # Step 1 — Parse PDFs using ai_parse_document
-    # ------------------------------------------------------------------
+    # Step 1 - Parse PDFs using ai_parse_document
 
     def parse_pdfs_with_ai(self) -> int:
         """Parse unprocessed PDFs using ``ai_parse_document``.
@@ -116,7 +112,7 @@ class DataProcessor:
 
         doc_count: int = unprocessed_df.count()
         if doc_count == 0:
-            logger.info("All documents have already been parsed — nothing to do.")
+            logger.info("All documents have already been parsed - nothing to do.")
             return 0
 
         logger.info(f"Parsing {doc_count} unprocessed document(s)…")
@@ -148,9 +144,7 @@ class DataProcessor:
         logger.info(f"✓ Parsed {doc_count} document(s) into {self.parsed_table_fqn}")
         return doc_count
 
-    # ------------------------------------------------------------------
-    # Step 2 — Extract, clean, and store chunks
-    # ------------------------------------------------------------------
+    # Step 2 - Extract, clean, and store chunks
 
     @staticmethod
     def _extract_chunks(
@@ -211,7 +205,7 @@ class DataProcessor:
             logger.info("No parsed documents to process.")
             return
 
-        # --- UDF registration ---
+        # UDF registration
         chunk_schema = ArrayType(
             StructType(
                 [
@@ -223,7 +217,7 @@ class DataProcessor:
         extract_chunks_udf = udf(self._extract_chunks, chunk_schema)
         clean_chunk_udf = udf(self._clean_chunk, StringType())
 
-        # --- Metadata from raw_documents ---
+        # Metadata from raw_documents
         metadata_df = self.spark.table(self.raw_documents_fqn).select(
             col("document_id"),
             col("title"),
@@ -235,7 +229,7 @@ class DataProcessor:
             col("official_url"),
         )
 
-        # --- Chunk extraction pipeline ---
+        # Chunk extraction pipeline
         chunks_df = (
             parsed_df.withColumn("chunks", extract_chunks_udf(col("parsed_content")))
             .withColumn("chunk", explode(col("chunks")))
@@ -250,7 +244,7 @@ class DataProcessor:
             .withColumn("processed_at", current_timestamp())
         )
 
-        # --- Write to Delta ---
+        # Write to Delta
         chunks_df.write.mode("append").saveAsTable(self.chunks_table_fqn)
         logger.info(f"✓ Saved chunks to {self.chunks_table_fqn}")
 
@@ -261,7 +255,7 @@ class DataProcessor:
         """)
         logger.info(f"✓ Change Data Feed enabled for {self.chunks_table_fqn}")
 
-        # --- Mark source documents as processed ---
+        # Mark source documents as processed
         processed_ids = parsed_df.select("document_id").distinct().collect()
         id_list = ", ".join(f"'{r['document_id']}'" for r in processed_ids)
         self.spark.sql(f"""
@@ -274,9 +268,7 @@ class DataProcessor:
             f"in {self.raw_documents_fqn}"
         )
 
-    # ------------------------------------------------------------------
-    # Convenience — run the full pipeline
-    # ------------------------------------------------------------------
+    # Convenience - run the full pipeline
 
     def process_and_save(self) -> None:
         """Run the complete data processing pipeline.
@@ -286,7 +278,7 @@ class DataProcessor:
         """
         parsed_count = self.parse_pdfs_with_ai()
         if parsed_count == 0:
-            logger.info("No new documents to process — pipeline complete.")
+            logger.info("No new documents to process - pipeline complete.")
             return
 
         self.process_chunks()

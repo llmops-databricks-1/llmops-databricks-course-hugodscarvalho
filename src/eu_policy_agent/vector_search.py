@@ -54,9 +54,7 @@ class VectorSearchManager:
         self.source_table = f"{self.catalog}.{self.schema}.{self._SOURCE_TABLE}"
         self.index_name = f"{self.catalog}.{self.schema}.{self._INDEX_SUFFIX}"
 
-    # ------------------------------------------------------------------
     # Endpoint management
-    # ------------------------------------------------------------------
 
     def create_endpoint_if_not_exists(self) -> None:
         """Create the Vector Search endpoint if it does not already exist.
@@ -88,20 +86,18 @@ class VectorSearchManager:
         )
         logger.info(f"✓ Vector Search endpoint created: {self.endpoint_name}")
 
-    # ------------------------------------------------------------------
     # Index management
-    # ------------------------------------------------------------------
 
     def create_or_get_index(self) -> object:
         """Create (or retrieve) the Delta Sync vector-search index.
 
         The index is configured with:
-        - ``pipeline_type="TRIGGERED"`` — sync on demand, ideal for
+        - ``pipeline_type="TRIGGERED"`` - sync on demand, ideal for
           batch pipelines.
-        - ``primary_key="id"`` — the surrogate key
+        - ``primary_key="id"`` - the surrogate key
           ``<document_id>_<chunk_id>``.
-        - ``embedding_source_column="text"`` — the cleaned chunk text.
-        - ``embedding_model_endpoint_name`` — the model from config.
+        - ``embedding_source_column="text"`` - the cleaned chunk text.
+        - ``embedding_model_endpoint_name`` - the model from config.
 
         Returns:
             A ``VectorSearchIndex`` handle.
@@ -114,7 +110,7 @@ class VectorSearchManager:
             logger.info(f"✓ Vector Search index already exists: {self.index_name}")
             return index
         except Exception:
-            logger.info(f"Index {self.index_name} not found — creating…")
+            logger.info(f"Index {self.index_name} not found - creating…")
 
         # Create a new Delta Sync index
         try:
@@ -133,13 +129,11 @@ class VectorSearchManager:
         except Exception as e:
             if "RESOURCE_ALREADY_EXISTS" not in str(e):
                 raise
-            # Race condition — index was created between our check and create
+            # Race condition - index was created between our check and create
             logger.info(f"✓ Vector Search index already exists: {self.index_name}")
             return self.client.get_index(index_name=self.index_name)
 
-    # ------------------------------------------------------------------
     # Sync
-    # ------------------------------------------------------------------
 
     def sync_index(self, *, max_retries: int = 6, backoff_seconds: int = 10) -> None:
         """Trigger an index sync against the source Delta table.
@@ -165,7 +159,7 @@ class VectorSearchManager:
             except Exception as exc:
                 if "not ready yet" in str(exc) and attempt < max_retries:
                     logger.warning(
-                        f"Endpoint not ready — retrying in {wait}s "
+                        f"Endpoint not ready - retrying in {wait}s "
                         f"(attempt {attempt}/{max_retries})"
                     )
                     time.sleep(wait)
@@ -173,9 +167,7 @@ class VectorSearchManager:
                 else:
                     raise
 
-    # ------------------------------------------------------------------
     # Search helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def parse_results(results: dict) -> list[dict]:
