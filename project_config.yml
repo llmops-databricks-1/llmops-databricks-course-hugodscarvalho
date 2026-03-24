@@ -1,0 +1,37 @@
+# Project Configuration for EU Policy Agent - LLMOps Course on Databricks
+
+# Development environment
+dev:
+  catalog: dev
+  schema: eu_policy
+  volume: legislation
+  llm_endpoint: databricks-llama-4-maverick
+  embedding_endpoint: databricks-gte-large-en
+  warehouse_id: "520a7ce3b05d3359"
+  vector_search_endpoint: "" # Fill in your VS endpoint
+
+# Acceptance/Staging environment
+acc:
+  catalog: acc
+  schema: eu_policy
+  volume: legislation
+  llm_endpoint: databricks-llama-4-maverick
+  embedding_endpoint: databricks-gte-large-en
+  warehouse_id: "520a7ce3b05d3359"
+  vector_search_endpoint: "" # Fill in your acc VS endpoint
+
+# Production environment
+prd:
+  catalog: prd
+  schema: eu_policy
+  volume: legislation
+  llm_endpoint: databricks-llama-4-maverick
+  embedding_endpoint: databricks-gte-large-en
+  warehouse_id: "520a7ce3b05d3359"
+  vector_search_endpoint: "" # Fill in your prd VS endpoint
+
+# Model configuration
+model_config:
+  temperature: 0.7
+  max_tokens: 2000
+  top_p: 0.95

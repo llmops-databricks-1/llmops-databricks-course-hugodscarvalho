@@ -1,1 +1,1 @@
-"""Tests for llmops-databricks-course-hugodscarvalho."""
+"""Tests for eu-policy-agent."""

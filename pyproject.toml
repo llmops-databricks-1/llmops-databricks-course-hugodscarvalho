@@ -1,7 +1,7 @@
 [project]
-name = "llmops-databricks-course-hugodscarvalho"
+name = "eu-policy-agent"
 dynamic = ["version"]
-description = "llmops-databricks-course-hugodscarvalho - LLMOps Course on Databricks"
+description = "eu-policy-agent - EU Policy Agent for LLMOps Course on Databricks"
 requires-python = ">=3.12, <3.13"
 dependencies = [
     "cffi==1.17.1",
@@ -23,7 +23,8 @@ dependencies = [
     "databricks-agents==1.8.2",
     "psycopg==3.3.2",
     "psycopg-pool==3.3.0",
-    "psycopg[binary]==3.3.2"
+    "psycopg[binary]==3.3.2",
+    "pypdf==5.1.0"
 ]
 
 [project.optional-dependencies]
@@ -31,6 +32,7 @@ dev = ["databricks-connect>=17.0, <18",
        "ipykernel>=6.29.5, <7",
        "pip>=25.0.1, <26",
        "pre-commit>=4.1.0, <5",
+       "ruff>=0.15.1, <1",
        "claudetracing>=0.2.0, <1",]
 
 ci = ["pre-commit>=4.1.0, <5",
@@ -40,7 +42,7 @@ ci = ["pre-commit>=4.1.0, <5",
 include-package-data = true
 
 [tool.setuptools.package-data]
-"your_custom_package" = ["../../../project_config.yml"]
+"eu_policy_agent" = ["../../../project_config.yml"]
 
 [build-system]
 requires = ["setuptools>=72.0"]
@@ -48,7 +50,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["your_custom_package*"]
+include = ["eu_policy_agent*"]
 
 [tool.setuptools.dynamic]
 version = { file = "version.txt" }
@@ -61,6 +63,7 @@ pythonpath = ["."]
 [tool.ruff]
 line-length = 90
 
+[tool.ruff.lint]
 select = [
     "F",    # pyflakes rules
     "E",    # pycodestyle error rules
@@ -81,9 +84,10 @@ ignore = [
     "C901",   # too complex
     "ERA001", # commented out code
     "ANN204",
-    "ANN102",
-    "ANN101"
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"notebooks/*.py" = ["E501", "E402"]
 
 [tool.ruff.format]
 indent-style = "space"
