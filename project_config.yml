@@ -8,7 +8,8 @@ dev:
   llm_endpoint: databricks-llama-4-maverick
   embedding_endpoint: databricks-gte-large-en
   warehouse_id: "520a7ce3b05d3359"
-  vector_search_endpoint: "" # Fill in your VS endpoint
+  vector_search_endpoint: eu_policy_vs_endpoint
+  genie_space_id: "" # Fill in after creating Genie Space
 
 # Acceptance/Staging environment
 acc:
@@ -18,7 +19,8 @@ acc:
   llm_endpoint: databricks-llama-4-maverick
   embedding_endpoint: databricks-gte-large-en
   warehouse_id: "520a7ce3b05d3359"
-  vector_search_endpoint: "" # Fill in your acc VS endpoint
+  vector_search_endpoint: eu_policy_vs_endpoint
+  genie_space_id: "" # Fill in after creating Genie Space
 
 # Production environment
 prd:
@@ -28,7 +30,8 @@ prd:
   llm_endpoint: databricks-llama-4-maverick
   embedding_endpoint: databricks-gte-large-en
   warehouse_id: "520a7ce3b05d3359"
-  vector_search_endpoint: "" # Fill in your prd VS endpoint
+  vector_search_endpoint: eu_policy_vs_endpoint
+  genie_space_id: "" # Fill in after creating Genie Space
 
 # Model configuration
 model_config:

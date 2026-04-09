@@ -72,15 +72,28 @@ dev  ──►  acc  ──►  prd
 
 ```
 eu-policy-agent/
-├── notebooks/                  # Databricks notebooks (one per deliverable)
+├── notebooks/                        # Databricks notebooks (one per deliverable)
 ├── src/
-│   └── eu_policy_agent/        # Python package
+│   └── eu_policy_agent/              # Python package
 │       ├── __init__.py
-│       └── config.py           # Pydantic config + env resolution
-├── resources/                  # DABs job/pipeline YAML definitions
-├── project_config.yml          # Per-environment config (catalog, schema, endpoints)
-├── databricks.yml              # DABs bundle definition (dev / acc / prd targets)
-├── pyproject.toml              # Dependencies + build config
+│       ├── config.py                 # Pydantic config + env resolution
+│       ├── data_processor.py         # PDF parsing, chunking, Delta writes
+│       └── vector_search.py          # Vector Search endpoint, index, sync, search
+├── resources/
+│   ├── eu_policy_ingestion_job.yml   # DABs job — PDF ingestion
+│   ├── process_data.yml             # DABs job — data processing + index sync
+│   └── deployment_scripts/
+│       └── process_data.py          # Scheduled notebook for the processing job
+├── tests/
+│   ├── conftest.py                  # Shared fixtures and pyspark stubs
+│   ├── test_basic.py                # Package smoke tests
+│   └── unit/                        # Unit tests (no live cluster required)
+│       ├── test_config.py
+│       ├── test_data_processor.py
+│       └── test_vector_search.py
+├── project_config.yml               # Per-environment config (catalog, schema, endpoints)
+├── databricks.yml                   # DABs bundle definition (dev / acc / prd targets)
+├── pyproject.toml                   # Dependencies + build config
 └── version.txt
 ```
 
@@ -91,7 +104,7 @@ eu-policy-agent/
 | Week | Deliverable | Status |
 |---|---|---|
 | 1 | Environment setup · PDF ingestion into Delta tables (`raw_documents`) | ✅ Done |
-| 2 | Chunking · Embeddings · Vector Search index · Genie Space | ⬜ Planned |
+| 2 | PDF parsing · Chunking · Embeddings · Vector Search index · Data processing DABs job | ✅ Done |
 | 3 | Agent definition · Tool calling · Memory with Lakebase | ⬜ Planned |
 | 4 | MLflow tracing · Evaluation · Prompt optimisation | ⬜ Planned |
 | 5 | Agent deployment · Monitoring and observability | ⬜ Planned |
@@ -170,11 +183,15 @@ databricks bundle deploy --target acc
 After deploying, trigger a job run directly from the CLI:
 
 ```bash
-# Run the ingestion job on dev (default)
+# Ingest raw PDFs into the raw_documents Delta table
 databricks bundle run eu_policy_ingestion_job
 
-# Run on a specific target
+# Parse PDFs, generate chunks, and sync the Vector Search index
+databricks bundle run data-pipeline
+
+# Run against a specific target
 databricks bundle run eu_policy_ingestion_job --target acc
+databricks bundle run data-pipeline --target acc
 ```
 
 The run output and logs stream directly to your terminal. You can also monitor the run in the Databricks Jobs UI.
@@ -182,6 +199,23 @@ The run output and logs stream directly to your terminal. You can also monitor t
 ---
 
 ## Development
+
+### Testing
+
+Unit tests run without a live Databricks cluster — all external dependencies are mocked.
+
+```bash
+# Install ci dependencies
+uv sync --extra ci
+
+# Run all tests
+uv run pytest
+
+# Run with verbose output
+uv run pytest -v
+```
+
+---
 
 ### Linting and formatting
 

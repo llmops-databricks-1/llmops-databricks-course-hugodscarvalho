@@ -20,6 +20,17 @@ class ProjectConfig(BaseModel):
     vector_search_endpoint: str = Field(
         default="", description="Vector search endpoint name"
     )
+    genie_space_id: str | None = Field(
+        default=None, description="Genie Space ID for metadata exploration"
+    )
+    system_prompt: str = Field(
+        default=(
+            "You are a helpful AI assistant specialising in EU digital "
+            "legislation. Use the provided context to answer questions "
+            "accurately, citing specific regulations when possible."
+        ),
+        description="System prompt for the agent",
+    )
 
     model_config = {"populate_by_name": True}
 
