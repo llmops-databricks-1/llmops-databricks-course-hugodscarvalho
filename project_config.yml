@@ -11,7 +11,7 @@ dev:
   vector_search_endpoint: eu_policy_vs_endpoint
   genie_space_id: "" # Fill in after creating Genie Space
   lakebase_project_id: "" # Fill in after creating Lakebase project
-  experiment_path: "/Users/your-email@example.com/eu-policy-agent-dev"
+  experiment_path: "/Users/hugodanielsilvacarvalho.hc@gmail.com/eu-policy-agent-dev"
 
 # Acceptance/Staging environment
 acc:
