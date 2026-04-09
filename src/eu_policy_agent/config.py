@@ -23,6 +23,13 @@ class ProjectConfig(BaseModel):
     genie_space_id: str | None = Field(
         default=None, description="Genie Space ID for metadata exploration"
     )
+    lakebase_project_id: str | None = Field(
+        default=None, description="Lakebase project ID for session memory"
+    )
+    experiment_path: str = Field(
+        default="",
+        description="MLflow experiment path (e.g. /Users/you@exmpl.com/eu-policy-agent)",
+    )
     system_prompt: str = Field(
         default=(
             "You are a helpful AI assistant specialising in EU digital "

@@ -1,0 +1,51 @@
+# EU Policy Agent — Evaluation Questions
+# One question per line. Lines starting with # are ignored.
+# Covers: AI Act, GDPR, DSA, DMA, NIS2, Data Act, Data Governance Act
+# Designed to test: retrieval quality, regulation citation, scope adherence, tone
+
+# --- EU AI Act ---
+What are the main obligations for providers of high-risk AI systems under the EU AI Act?
+How does the EU AI Act classify AI systems by risk level?
+What technical documentation must providers of high-risk AI systems maintain under the AI Act?
+Which AI applications are prohibited under the EU AI Act?
+What are the conformity assessment requirements for high-risk AI systems?
+
+# --- GDPR ---
+What personal data rights does GDPR grant to data subjects?
+Under GDPR, what are the legal bases for processing personal data?
+What are a data controller's obligations under GDPR Article 24?
+How does GDPR define a personal data breach and what are the notification requirements?
+What is the GDPR right to erasure and when can it be refused?
+
+# --- Digital Services Act (DSA) ---
+What obligations does the DSA impose on very large online platforms?
+How does the DSA define illegal content and what must platforms do about it?
+What transparency requirements does the DSA place on online advertising?
+What are the systemic risk assessment obligations for very large platforms under the DSA?
+
+# --- Digital Markets Act (DMA) ---
+Who qualifies as a gatekeeper under the Digital Markets Act?
+What core platform services are regulated by the DMA?
+What interoperability obligations does the DMA impose on gatekeepers?
+What data-sharing obligations do gatekeepers have towards business users under the DMA?
+
+# --- NIS2 Directive ---
+Which entities are classified as essential under the NIS2 Directive?
+What cybersecurity incident reporting requirements does NIS2 impose?
+What are the minimum cybersecurity measures required under NIS2?
+How does NIS2 differ from the original NIS Directive?
+
+# --- Data Act ---
+What rights does the EU Data Act grant to users of connected products?
+What data-sharing obligations does the Data Act impose on data holders?
+How does the Data Act address cloud switching rights?
+
+# --- Data Governance Act ---
+What is the purpose of the EU Data Governance Act?
+What are data intermediary services under the Data Governance Act?
+How does the Data Governance Act regulate data altruism organisations?
+
+# --- Cross-regulation / Edge Cases ---
+How do the GDPR and the EU AI Act interact for AI systems processing personal data?
+What enforcement mechanisms are available under EU digital regulations?
+Can you explain the relationship between the DSA and DMA?

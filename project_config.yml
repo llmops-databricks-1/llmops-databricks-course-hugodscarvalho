@@ -10,6 +10,8 @@ dev:
   warehouse_id: "520a7ce3b05d3359"
   vector_search_endpoint: eu_policy_vs_endpoint
   genie_space_id: "" # Fill in after creating Genie Space
+  lakebase_project_id: "" # Fill in after creating Lakebase project
+  experiment_path: "/Users/your-email@example.com/eu-policy-agent-dev"
 
 # Acceptance/Staging environment
 acc:
@@ -21,6 +23,8 @@ acc:
   warehouse_id: "520a7ce3b05d3359"
   vector_search_endpoint: eu_policy_vs_endpoint
   genie_space_id: "" # Fill in after creating Genie Space
+  lakebase_project_id: "" # Fill in after creating Lakebase project
+  experiment_path: "/Shared/eu-policy-agent-acc"
 
 # Production environment
 prd:
@@ -32,6 +36,8 @@ prd:
   warehouse_id: "520a7ce3b05d3359"
   vector_search_endpoint: eu_policy_vs_endpoint
   genie_space_id: "" # Fill in after creating Genie Space
+  lakebase_project_id: "" # Fill in after creating Lakebase project
+  experiment_path: "/Shared/eu-policy-agent-prd"
 
 # Model configuration
 model_config:

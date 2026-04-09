@@ -84,10 +84,11 @@ ignore = [
     "C901",   # too complex
     "ERA001", # commented out code
     "ANN204",
+    "ANN401", # typing.Any allowed where necessary (e.g. MLflow scorer API)
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"notebooks/*.py" = ["E501", "E402"]
+"notebooks/*.py" = ["E501", "E402", "F821"]  # F821: display() is a Databricks built-in
 "tests/**/*.py"  = ["ANN"]
 
 [tool.ruff.format]
