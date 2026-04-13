@@ -17,6 +17,10 @@ import asyncio
 import json
 import os
 
+import nest_asyncio
+
+nest_asyncio.apply()  # allow asyncio.run() inside Databricks' running event loop
+
 import mlflow
 from databricks.sdk import WorkspaceClient
 from dotenv import load_dotenv
