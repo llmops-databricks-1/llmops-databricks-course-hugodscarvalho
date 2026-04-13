@@ -35,11 +35,9 @@ import os
 import urllib.parse
 from typing import Any
 
-import psycopg
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.postgres import PostgresAPI
 from loguru import logger
-from psycopg_pool import ConnectionPool
 
 
 class LakebaseMemory:
@@ -55,7 +53,7 @@ class LakebaseMemory:
 
     def __init__(self, project_id: str) -> None:
         self.project_id = project_id
-        self._pool: ConnectionPool | None = None
+        self._pool: Any = None
 
     # Connection management
 
@@ -97,9 +95,12 @@ class LakebaseMemory:
             "databricks_postgres?sslmode=require"
         )
 
-    def _get_pool(self) -> ConnectionPool:
+    def _get_pool(self) -> Any:
         """Return (creating if necessary) the connection pool."""
         if self._pool is None:
+            import psycopg_binary  # noqa: F401 - registers bundled libpq before psycopg loads
+            from psycopg_pool import ConnectionPool
+
             conn_string = self._get_connection_string()
             self._pool = ConnectionPool(conninfo=conn_string, min_size=1, max_size=5)
         return self._pool
@@ -137,10 +138,10 @@ class LakebaseMemory:
                     (session_id,),
                 ).fetchall()
                 return [row[0] for row in rows]
-        except psycopg.OperationalError:
-            self._reset_pool()
-            raise
         except Exception as exc:
+            if "OperationalError" in type(exc).__name__:
+                self._reset_pool()
+                raise
             logger.warning(f"Failed to load session messages for {session_id!r}: {exc}")
             return []
 
@@ -162,8 +163,8 @@ class LakebaseMemory:
                         "VALUES (%s, %s)",
                         (session_id, json.dumps(msg)),
                     )
-        except psycopg.OperationalError:
-            self._reset_pool()
-            raise
         except Exception as exc:
+            if "OperationalError" in type(exc).__name__:
+                self._reset_pool()
+                raise
             logger.warning(f"Failed to save session messages for {session_id!r}: {exc}")
