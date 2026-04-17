@@ -2,8 +2,12 @@
 
 pyspark (via databricks-connect) is a **dev** extra, not a **ci** extra,
 so it is absent from the CI environment.  We stub the affected modules at
-module-load time - before pytest collects any test file that imports the
-package - so that ``import eu_policy_agent`` succeeds without a live cluster.
+module-load time — before pytest collects any test file that imports the
+package — so that ``import eu_policy_agent`` succeeds without a live cluster.
+
+Additional stubs cover Databricks SDK submodules, MLflow GenAI extensions,
+and openai/psycopg so that the agent, memory, and evaluation modules can be
+imported and unit-tested without live services.
 """
 
 from __future__ import annotations
@@ -14,14 +18,31 @@ from unittest.mock import MagicMock
 
 import pytest
 
-# Module-level stubs - must run before test collection
+# Module-level stubs — must run before test collection
 
-_PYSPARK_STUBS = (
+_STUBS = (
+    # PySpark (databricks-connect is dev-only)
     "pyspark",
     "pyspark.sql",
     "pyspark.sql.functions",
     "pyspark.sql.types",
     "pyspark.dbutils",
+    # Databricks SDK sub-modules not always present in CI
+    "databricks.sdk.service.postgres",
+    "databricks_mcp",
+    # MLflow GenAI extensions (may not be installed in CI)
+    "mlflow.genai",
+    "mlflow.genai.scorers",
+    "mlflow.genai.judges",
+    "mlflow.pyfunc",
+    "mlflow.entities",
+    "mlflow.models.resources",
+    "mlflow.types.responses",
+    # Agent base class
+    "mlflow.pyfunc.ResponsesAgent",
+    # Backoff / nest_asyncio
+    "nest_asyncio",
+    "backoff",
 )
 
 
@@ -35,9 +56,23 @@ def _stub_if_missing(name: str) -> None:
         sys.modules[name] = MagicMock()
 
 
-for _mod in _PYSPARK_STUBS:
+for _mod in _STUBS:
     _stub_if_missing(_mod)
 
+# Ensure mlflow.pyfunc.ResponsesAgent is importable as a class
+import mlflow.pyfunc  # noqa: E402
+
+if not hasattr(mlflow.pyfunc, "ResponsesAgent"):
+    mlflow.pyfunc.ResponsesAgent = MagicMock  # type: ignore[attr-defined]
+
+# Ensure mlflow.entities.SpanType has the expected attributes
+import mlflow.entities  # noqa: E402
+
+if not hasattr(mlflow.entities, "SpanType"):
+    span_type = MagicMock()
+    for attr in ("AGENT", "CHAIN", "LLM", "TOOL", "RETRIEVER"):
+        setattr(span_type, attr, attr)
+    mlflow.entities.SpanType = span_type  # type: ignore[attr-defined]
 
 # Deferred package import (after stubs are in place)
 
@@ -76,6 +111,7 @@ def sample_config() -> ProjectConfig:
         llm_endpoint="test-llm",
         embedding_endpoint="test-embedding",
         vector_search_endpoint="test-vs-endpoint",
+        lakebase_project_id=None,
     )
 
 

@@ -2,13 +2,19 @@
 
 __version__ = "0.0.1"
 
+from eu_policy_agent.agent import EuPolicyAgent
 from eu_policy_agent.config import ProjectConfig, get_env, load_config
 from eu_policy_agent.data_processor import DataProcessor
+from eu_policy_agent.mcp import ToolInfo
+from eu_policy_agent.memory import LakebaseMemory
 from eu_policy_agent.vector_search import VectorSearchManager
 
 __all__ = [
     "DataProcessor",
+    "EuPolicyAgent",
+    "LakebaseMemory",
     "ProjectConfig",
+    "ToolInfo",
     "VectorSearchManager",
     "get_env",
     "load_config",
