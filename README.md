@@ -32,14 +32,15 @@ EU digital regulation has accelerated significantly — the AI Act, DSA, DMA, NI
 | Platform | Databricks (Serverless Compute v4) |
 | Storage & Governance | Unity Catalog — `dev`, `acc`, `prd` |
 | Deployment | Databricks Asset Bundles (DABs) |
+| CI/CD | GitHub Actions — matrix deploy to dev + acc on push to `main` |
 | Local Development | Databricks Connect + VS Code Databricks extension |
-| Package Manager | [UV](https://github.com/astral-sh/uv) |
+| Package Manager | [uv](https://github.com/astral-sh/uv) |
 | Python Packaging | `src/` layout, `pyproject.toml`, built as `.whl` |
 | Agent Framework | MLflow `ResponsesAgent` (OpenAI Responses API) |
 | Tool Integration | Databricks MCP (Vector Search, optional Genie) |
 | Vector Search | Mosaic AI Vector Search |
-| Model Serving | Mosaic AI Model Serving |
-| Agent Memory | Lakebase (managed PostgreSQL) |
+| Model Serving | Mosaic AI Model Serving — `agents.deploy()` |
+| Agent Memory | Lakebase (managed PostgreSQL) via psycopg3 |
 | Experiment Tracking | MLflow — tracing, evaluation, model registry |
 | Logging | loguru |
 
@@ -66,7 +67,7 @@ The same schema and volume structure is replicated across all three environments
     └── eu_policy_index              ← Vector Search index
 ```
 
-Environment promotion flow managed by DABs CI/CD (Week 6):
+Environment promotion managed by the CD pipeline:
 
 ```
 dev  ──►  acc  ──►  prd
@@ -78,7 +79,11 @@ dev  ──►  acc  ──►  prd
 
 ```
 eu-policy-agent/
-├── notebooks/                        # Databricks notebooks — one per deliverable
+├── .github/
+│   └── workflows/
+│       ├── ci.yml                        # PR gate: pre-commit, pytest, uv build
+│       └── cd.yml                        # Push to main: matrix deploy to dev + acc
+├── notebooks/                            # Databricks notebooks — one per deliverable
 │   ├── 1.1_foundation_models_overview.py
 │   ├── 1.2_provisioned_throughput_deployment.py
 │   ├── 1.3_eu_policy_data_ingestion.py      ← Week 1
@@ -93,7 +98,9 @@ eu-policy-agent/
 │   ├── 3.4_genie_space.py                  ← Week 3 (supplementary: Genie setup)
 │   ├── 4.1_mlflow_tracing.py               ← Week 4 (core)
 │   ├── 4.2_evaluation.py                   ← Week 4 (core)
-│   └── 4.3_mlflow_log_register.py          ← Week 4
+│   ├── 4.3_mlflow_log_register.py          ← Week 4
+│   ├── 5.1_endpoint_deployment.py          ← Week 5: deploy via agents.deploy() + smoke test
+│   └── 5.2_spn_permissions.py              ← Week 5: grant SPN access to serving resources
 ├── src/
 │   └── eu_policy_agent/              # Python package
 │       ├── __init__.py
@@ -103,12 +110,17 @@ eu-policy-agent/
 │       ├── mcp.py                    # MCP tool integration (ToolInfo, create_mcp_tools)
 │       ├── memory.py                 # Lakebase session memory (LakebaseMemory)
 │       ├── agent.py                  # EuPolicyAgent + log_register_agent
-│       └── evaluation.py            # Scorers + evaluate_agent runner
+│       ├── evaluation.py             # Scorers + evaluate_agent runner
+│       └── utils/
+│           └── common.py             # get_widget, set_mlflow_tracking_uri helpers
 ├── resources/
-│   ├── eu_policy_ingestion_job.yml   # DABs job — PDF ingestion
-│   ├── process_data.yml             # DABs job — data processing + index sync
+│   ├── eu_policy_ingestion_job.yml       # DABs job — PDF ingestion
+│   ├── process_data.yml                  # DABs job — data processing + index sync
+│   ├── register_deploy_agent.yml         # DABs job — evaluate, log, register, deploy
 │   └── deployment_scripts/
-│       └── process_data.py          # Scheduled script for the processing job
+│       ├── process_data.py               # Task script: data pipeline
+│       ├── log_register_agent.py         # Task script: quality gate → log → register
+│       └── deploy_agent.py               # Task script: agents.deploy()
 ├── tests/
 │   ├── conftest.py                  # Shared fixtures, pyspark and SDK stubs
 │   ├── test_basic.py                # Package smoke tests
@@ -137,8 +149,8 @@ eu-policy-agent/
 | 2 | PDF parsing · Chunking · Embeddings · Vector Search index · Data pipeline DABs job | ✅ Done |
 | 3 | Agent definition · Tool calling via MCP · Session memory with Lakebase · RAG pattern · MCP deep dive · Genie Space setup | ✅ Done |
 | 4 | MLflow tracing · Agent evaluation · Model logging and registration to Unity Catalog | ✅ Done |
-| 5 | Monitoring, observability, and alerting | ⬜ Planned |
-| 6 | CI/CD pipeline via DABs · Promotion `dev → acc → prd` | ⬜ Planned |
+| 5 | Agent deployment via `agents.deploy()` · CI/CD pipeline · SPN permissions | ✅ Done |
+| 6 | Monitoring & observability · Trace aggregation · AIBI dashboards · Alerting · FinOps | ⬜ Planned |
 
 ---
 
@@ -147,7 +159,7 @@ eu-policy-agent/
 ### Prerequisites
 
 - Python 3.12
-- [UV](https://github.com/astral-sh/uv) — `pip install uv`
+- [uv](https://github.com/astral-sh/uv) — `pip install uv`
 - [Databricks CLI v0.200+](https://docs.databricks.com/dev-tools/cli/install.html)
 - [VS Code Databricks extension](https://marketplace.visualstudio.com/items?itemName=databricks.databricks)
 
@@ -182,7 +194,8 @@ dev:
   vector_search_endpoint: eu_policy_vs_endpoint   # required
   genie_space_id: ""           # optional — leave empty to disable Genie tooling
   lakebase_project_id: ""      # optional — leave empty to run agent without memory
-  experiment_path: "/Users/you@example.com/eu-policy-agent-dev"  # required for Week 4
+  usage_policy_id: ""          # optional — Databricks serverless usage policy ID
+  experiment_path: "/Users/you@example.com/eu-policy-agent-dev"  # required for Week 4+
 ```
 
 See the [Configuration](#configuration) section for full field reference.
@@ -372,7 +385,7 @@ Covers:
 - Running evaluation as a quality gate before logging
 - `mlflow.pyfunc.log_model` with resource declarations (Vector Search index, tables, endpoints, SQL warehouse, and optionally Genie Space)
 - `mlflow.register_model` to Unity Catalog
-- Setting the `champion` model alias for deployment
+- Setting the `latest-model` alias for deployment
 
 **Prerequisites:**
 - All of the above weeks complete
@@ -384,6 +397,80 @@ Covers:
 > **Genie resource:** If `genie_space_id` is set, `DatabricksGenieSpace` is automatically added to the resource declarations. This grants the Model Serving service identity access to the Genie Space — no manual permission setup needed.
 
 ---
+
+### Week 5 — Agent deployment and CI/CD
+
+**Prerequisites:**
+- Week 4 complete — a registered model with the `latest-model` alias set
+- A secret scope `eu-policy-agent-scope` in Databricks with `client-id` and `client-secret` for the Lakebase SPN
+
+#### `notebooks/5.2_spn_permissions.py` — Grant SPN permissions *(run first)*
+
+Before the serving endpoint can reach workspace resources, the Model Serving service identity must have permission to access them. This notebook grants:
+
+| Resource | Permission |
+|---|---|
+| Genie Space | `CAN_RUN` |
+| Vector Search endpoint | `CAN_USE` |
+| SQL Warehouse | `CAN_USE` |
+
+Reads the SPN `client_id` from the `{env}_SPN` Databricks secret scope. Run once per environment as a workspace admin.
+
+---
+
+#### `notebooks/5.1_endpoint_deployment.py` — Deploy and test the endpoint
+
+Covers:
+- `agents.deploy()` — endpoint creation, service-identity provisioning, inference tables, review app
+- Passing `MLFLOW_EXPERIMENT_ID` so production traces land in the correct experiment
+- Lakebase SPN credentials injected as `{{secrets/...}}` references (not hard-coded)
+- Scale-to-zero and workload sizing
+- Testing the live endpoint via the OpenAI Responses API client
+
+**Prerequisites:**
+- `notebooks/5.2_spn_permissions.py` executed for the target environment
+- `experiment_path` set in `project_config.yml`
+- Secret scope `eu-policy-agent-scope` populated
+
+> **Authentication note:** Lakebase credentials are injected via `LAKEBASE_SP_CLIENT_ID`, `LAKEBASE_SP_CLIENT_SECRET`, `LAKEBASE_SP_HOST` environment variables — not through `DATABRICKS_CLIENT_*`. Using `DATABRICKS_CLIENT_*` on the serving endpoint overrides MCP resource auth and breaks Vector Search tool calls.
+
+---
+
+#### CI/CD pipeline
+
+The automated pipeline runs entirely through GitHub Actions and Databricks Asset Bundles.
+
+**CI** (`.github/workflows/ci.yml`) — triggered on every pull request to `main`:
+
+```
+pre-commit (ruff + standard hooks)  →  pytest  →  uv build
+```
+
+**CD** (`.github/workflows/cd.yml`) — triggered on push to `main`:
+
+```
+matrix: [dev, acc]
+  └── databricks bundle deploy --target {env} --var="git_sha=..." --var="branch=..."
+```
+
+The bundle deploy triggers the `eu-policy-agent-register-deploy-pipeline` Lakeflow job, which runs two tasks in sequence:
+
+```
+log_register_agent  →  deploy_agent
+```
+
+1. **`log_register_agent`** — runs evaluation as a quality gate, logs the model to MLflow, registers it to Unity Catalog, and sets the `latest-model` alias.
+2. **`deploy_agent`** — resolves the `latest-model` alias version and calls `agents.deploy()` to update the Model Serving endpoint.
+
+**Required GitHub setup (one-time, per repo):**
+
+Create two GitHub Environments (`dev`, `acc`) in repo Settings → Environments, each with:
+
+| Key | Type | Value |
+|---|---|---|
+| `DATABRICKS_HOST` | Variable | `https://<your-workspace>.azuredatabricks.net` |
+| `DATABRICKS_CLIENT_ID` | Secret | SPN client ID for the environment |
+| `DATABRICKS_CLIENT_SECRET` | Secret | SPN client secret for the environment |
 
 ---
 
@@ -404,32 +491,25 @@ uv run pytest
 uv run pytest -v
 
 # Specific module
-uv run pytest tests/unit/test_agent.py
+uv run pytest tests/unit/test_config.py
 uv run pytest tests/unit/test_memory.py
 uv run pytest tests/unit/test_evaluation.py
-uv run pytest tests/unit/test_mcp.py
 ```
 
-117 tests, ~0.12s.
+119 tests, ~0.3s.
 
 ---
 
 ### Linting and formatting
 
-Ruff is included in the `dev` dependencies. Because ruff is not a global binary in this project, always invoke it via `uv run --with ruff`:
+Ruff is not a global binary in this project — always invoke it via `uv run --with ruff`:
 
 ```bash
-# Install dev dependencies
-uv sync --extra dev
-
 # Lint and auto-fix
 uv run --with ruff ruff check . --fix
 
 # Format
 uv run --with ruff ruff format .
-
-# Both in one go
-uv run --with ruff ruff check . --fix && uv run --with ruff ruff format .
 ```
 
 ---
@@ -465,9 +545,10 @@ Once installed, hooks run automatically on `git commit`. If a hook auto-fixes a 
 | `embedding_endpoint` | Yes | Databricks model serving endpoint for embeddings |
 | `warehouse_id` | Yes | SQL warehouse ID (used by Genie) |
 | `vector_search_endpoint` | Yes | Vector Search endpoint name |
-| `genie_space_id` | **Optional** | Genie Space ID for natural language data queries. Leave empty to disable. |
-| `lakebase_project_id` | **Optional** | Lakebase project ID for session memory. Leave empty to run the agent stateless. |
-| `experiment_path` | Yes (Week 4+) | MLflow experiment path, e.g. `/Users/you@example.com/eu-policy-agent-dev` |
+| `genie_space_id` | Optional | Genie Space ID for natural language data queries. Leave empty to disable. |
+| `lakebase_project_id` | Optional | Lakebase project ID for session memory. Leave empty to run the agent stateless. |
+| `usage_policy_id` | Optional | Databricks serverless usage policy ID for cost attribution and chargeback. |
+| `experiment_path` | Yes (Week 4+) | MLflow experiment path, e.g. `/Shared/eu-policy-agent-dev` |
 | `system_prompt` | No | Agent system prompt. Defaults to the EU legislation QA prompt. |
 
 ```yaml
@@ -481,8 +562,23 @@ dev:
   vector_search_endpoint: eu_policy_vs_endpoint
   genie_space_id: ""           # optional
   lakebase_project_id: ""      # optional
-  experiment_path: "/Users/you@example.com/eu-policy-agent-dev"
+  usage_policy_id: ""          # optional
+  experiment_path: "/Shared/eu-policy-agent-dev"
 ```
+
+---
+
+## Manual setup checklist
+
+Steps that cannot be automated and must be done once per environment before running the pipeline end-to-end:
+
+- [ ] Upload the 7 EU legislation PDFs to `/Volumes/{env}/eu_policy/legislation/`
+- [ ] Create the `eu-policy-agent-scope` Databricks secret scope with `client-id` and `client-secret`
+- [ ] Create the `{env}_SPN` secret scope with `client_id` (used by `5.2_spn_permissions.py`)
+- [ ] Run `notebooks/5.2_spn_permissions.py` as a workspace admin for each environment
+- [ ] Create GitHub Environments `dev` and `acc` with `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET`
+- [ ] Fill in `genie_space_id` and `lakebase_project_id` in `project_config.yml` after provisioning those resources
+- [ ] Fill in `usage_policy_id` in `project_config.yml` once policy IDs are assigned in the workspace
 
 ---
 
@@ -490,8 +586,8 @@ dev:
 
 | Convention | Format |
 |---|---|
-| Branch | `week{n}/{short-description}` — e.g. `week3/agent-tool-calling` |
-| PR title | `[Week N] Description` — e.g. `[Week 3] Agent definition and Lakebase memory` |
+| Branch | `week{n}/{short-description}` or `week{n}-{m}/{short-description}` for multi-week spans |
+| PR title | `[Week N] Description` — e.g. `[Week 5 & 6] Deployment, CI/CD, and observability` |
 | Direct commits to `main` | Never |
 
 All changes go through a PR. `main` always reflects the latest stable weekly deliverable.
