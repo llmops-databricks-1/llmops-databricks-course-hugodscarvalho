@@ -40,12 +40,14 @@ class TestProjectConfigConstruction:
             warehouse_id="wh-123",
             vector_search_endpoint="vs-ep",
             genie_space_id="genie-abc",
+            usage_policy_id="policy-xyz",
         )
         assert cfg.llm_endpoint == "llm-ep"
         assert cfg.embedding_endpoint == "emb-ep"
         assert cfg.warehouse_id == "wh-123"
         assert cfg.vector_search_endpoint == "vs-ep"
         assert cfg.genie_space_id == "genie-abc"
+        assert cfg.usage_policy_id == "policy-xyz"
 
     def test_optional_fields_default_to_empty_string(self) -> None:
         """Optional string fields default to empty string, not None."""
@@ -58,6 +60,10 @@ class TestProjectConfigConstruction:
     def test_genie_space_id_defaults_to_none(self) -> None:
         cfg = ProjectConfig(catalog="cat", schema="sch", volume="vol")
         assert cfg.genie_space_id is None
+
+    def test_usage_policy_id_defaults_to_none(self) -> None:
+        cfg = ProjectConfig(catalog="cat", schema="sch", volume="vol")
+        assert cfg.usage_policy_id is None
 
     def test_schema_alias_populates_db_schema(self) -> None:
         """The pydantic alias 'schema' writes to the db_schema field."""
@@ -95,6 +101,19 @@ class TestProjectConfigProperties:
     def test_full_volume_path(self, sample_config: ProjectConfig) -> None:
         cfg = ProjectConfig(catalog="my_cat", schema="my_sch", volume="my_vol")
         assert cfg.full_volume_path == "/Volumes/my_cat/my_sch/my_vol"
+
+    def test_experiment_name_aliases_experiment_path(self) -> None:
+        """experiment_name is a read-only alias for experiment_path used by
+        deployment scripts so they don't need to know which field name the YAML
+        uses."""
+        cfg = ProjectConfig(
+            catalog="c",
+            schema="s",
+            volume="v",
+            experiment_path="/Shared/eu-policy-agent-dev",
+        )
+        assert cfg.experiment_name == cfg.experiment_path
+        assert cfg.experiment_name == "/Shared/eu-policy-agent-dev"
 
 
 # ProjectConfig.from_yaml - environment validation

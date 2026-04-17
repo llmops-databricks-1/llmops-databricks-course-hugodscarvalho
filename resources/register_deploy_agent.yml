@@ -1,0 +1,37 @@
+resources:
+  jobs:
+    register_deploy_agent:
+      name: eu-policy-agent-register-deploy-pipeline
+      tags:
+        project_name: "eu-policy-agent"
+        environment: ${bundle.target}
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ../dist/*.whl
+
+      tasks:
+        # Task 1: evaluate → log → register → set 'latest-model' alias.
+        - task_key: log_register_agent
+          environment_key: default
+          notebook_task:
+            notebook_path: deployment_scripts/log_register_agent.py
+            base_parameters:
+              env: ${bundle.target}
+              git_sha: "${var.git_sha}"
+              run_id: "{{job.run_id}}"
+
+        # Task 2: resolve 'latest-model' alias → deploy to serving endpoint.
+        # Runs only after log_register_agent succeeds — enforced by depends_on.
+        - task_key: deploy_agent
+          depends_on:
+            - task_key: log_register_agent
+          environment_key: default
+          notebook_task:
+            notebook_path: deployment_scripts/deploy_agent.py
+            base_parameters:
+              env: ${bundle.target}
+              git_sha: "${var.git_sha}"

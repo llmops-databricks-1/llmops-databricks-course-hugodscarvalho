@@ -2,14 +2,17 @@ bundle:
   name: eu-policy-agent
 
 include:
-- resources/*.yml
+  - resources/*.yml
 
 variables:
   git_sha:
     description: "Git SHA of the deployed commit"
     default: "local"
+  branch:
+    description: "Git branch being deployed"
+    default: "main"
   schedule_pause_status:
-    description: "Schedule pause status"
+    description: "Schedule pause status for Lakeflow jobs"
     default: PAUSED
 
 artifacts:
@@ -17,6 +20,11 @@ artifacts:
     type: whl
     build: uv build
     path: .
+
+sync:
+  include:
+    - project_config.yml
+    - eval_inputs.txt
 
 targets:
   dev:
@@ -28,14 +36,14 @@ targets:
 
   acc:
     workspace:
-      host: https://dbc-cf5d4dc9-f30c.cloud.databricks.com # Replace with your acc workspace host
+      host: https://dbc-cf5d4dc9-f30c.cloud.databricks.com
       root_path: /Shared/.bundle/${bundle.name}/${bundle.target}
     variables:
       schedule_pause_status: PAUSED
 
   prd:
     workspace:
-      host: https://dbc-cf5d4dc9-f30c.cloud.databricks.com # Replace with your prd workspace host
+      host: https://dbc-cf5d4dc9-f30c.cloud.databricks.com
       root_path: /Shared/.bundle/${bundle.name}/${bundle.target}
     variables:
       schedule_pause_status: UNPAUSED

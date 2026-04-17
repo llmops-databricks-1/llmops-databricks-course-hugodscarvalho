@@ -26,9 +26,13 @@ class ProjectConfig(BaseModel):
     lakebase_project_id: str | None = Field(
         default=None, description="Lakebase project ID for session memory"
     )
+    usage_policy_id: str | None = Field(
+        default=None,
+        description="Databricks serverless usage policy ID for cost attribution",
+    )
     experiment_path: str = Field(
         default="",
-        description="MLflow experiment path (e.g. /Users/you@exmpl.com/eu-policy-agent)",
+        description="MLflow experiment path (e.g. /Shared/eu-policy-agent-dev)",
     )
     system_prompt: str = Field(
         default=(
@@ -46,52 +50,71 @@ class ProjectConfig(BaseModel):
         """Load configuration from YAML file.
 
         Args:
-            config_path: Path to the YAML configuration file
-            env: Environment name (dev, acc, prd)
+            config_path: Path to the YAML configuration file.
+            env: Environment name (dev, acc, prd).
 
         Returns:
-            ProjectConfig instance
+            ProjectConfig instance for the requested environment.
+
+        Raises:
+            ValueError: If ``env`` is not a valid environment or is missing from
+                the config file.
         """
-        if env not in ["prd", "acc", "dev"]:
+        if env not in ("prd", "acc", "dev"):
             raise ValueError(
-                f"Invalid environment: {env}. Expected 'prd', 'acc', or 'dev'"
+                f"Invalid environment: {env!r}. Expected one of 'dev', 'acc', 'prd'."
             )
 
         with open(config_path) as f:
             config_data = yaml.safe_load(f)
 
         if env not in config_data:
-            raise ValueError(f"Environment '{env}' not found in config file")
+            raise ValueError(
+                f"Environment {env!r} not found in config file {config_path!r}."
+            )
 
         return cls(**config_data[env])
 
+    # ------------------------------------------------------------------
+    # Convenience properties
+    # ------------------------------------------------------------------
+
     @property
     def schema(self) -> str:
-        """Alias for db_schema for backward compatibility."""
+        """Alias for ``db_schema`` — keeps call-sites concise."""
         return self.db_schema
 
     @property
+    def experiment_name(self) -> str:
+        """Alias for ``experiment_path`` used by deployment scripts."""
+        return self.experiment_path
+
+    @property
     def full_schema_name(self) -> str:
-        """Get fully qualified schema name."""
+        """Fully qualified schema name: ``{catalog}.{schema}``."""
         return f"{self.catalog}.{self.db_schema}"
 
     @property
     def full_volume_path(self) -> str:
-        """Get fully qualified volume path as filesystem path."""
+        """Filesystem path to the Unity Catalog volume."""
         return f"/Volumes/{self.catalog}/{self.db_schema}/{self.volume}"
 
 
 def load_config(
     config_path: str = "project_config.yml", env: str = "dev"
 ) -> ProjectConfig:
-    """Load project configuration.
+    """Load project configuration, searching parent directories if needed.
+
+    Walks up to three levels of parent directories to find ``config_path``
+    when a relative path is given — mirrors the notebook working-directory
+    behaviour on Databricks.
 
     Args:
-        config_path: Path to configuration file
-        env: Environment name
+        config_path: Path to the YAML configuration file.
+        env: Environment name (dev, acc, prd).
 
     Returns:
-        ProjectConfig instance
+        Resolved ``ProjectConfig`` instance.
     """
     if not Path(config_path).is_absolute():
         current = Path.cwd()
@@ -106,13 +129,16 @@ def load_config(
 
 
 def get_env(spark: SparkSession) -> str:
-    """Get current environment from dbutils widget, falling back to 'dev'.
+    """Read the ``env`` widget value, falling back to ``"dev"``.
+
+    Used by Databricks notebook tasks and Lakeflow jobs to resolve the
+    target environment from the ``env`` base parameter.
 
     Args:
-        spark: Active SparkSession
+        spark: Active ``SparkSession``.
 
     Returns:
-        Environment name (dev, acc, or prd)
+        Environment name — one of ``"dev"``, ``"acc"``, ``"prd"``.
     """
     try:
         dbutils = DBUtils(spark)

@@ -484,10 +484,13 @@ def log_register_agent(
     logger.info(f"Registered version: {registered_model.version}")
 
     client = MlflowClient()
-    logger.info("Setting alias 'champion'")
+    # "latest-model" is the handoff alias between the log/register task and the
+    # deploy task in the CI/CD pipeline.  The deploy script resolves this alias
+    # to a concrete version number before calling agents.deploy().
+    logger.info("Setting alias 'latest-model'")
     client.set_registered_model_alias(
         name=model_name,
-        alias="champion",
+        alias="latest-model",
         version=registered_model.version,
     )
     return registered_model
